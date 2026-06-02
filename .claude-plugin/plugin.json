@@ -1,7 +1,7 @@
 {
   "name": "planning-patrol",
   "description": "The Planning Patrol: reports how much of the project you actually planned before coding — and issues a verdict.",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "author": {
     "name": "yuriymarad",
     "email": "maradyura@gmail.com"

@@ -13,6 +13,10 @@ stdout/caveat records are excluded. Metrics:
   * % of presented plans the user rejected outright (kept planning) without
     typing a change
 
+From these it derives a curved 0–10 planning score (square-root curve on
+plan-mode usage plus a small diligence bonus for refined plans) and the
+Patrol's verdict for that score.
+
 Stdlib only.
 """
 
@@ -232,22 +236,23 @@ def pct(num: int, denom: int) -> str:
 def verdict(score: float, total_turns: int) -> tuple[str, str]:
     """The Planning Patrol's ruling: an (emoji, headline) for the score.
 
-    'score' is the combined 0–100 planning score; 'total_turns' guards the
-    no-evidence case so an empty project doesn't get arrested on a 0% score.
+    'score' is the curved 0–10 planning score; 'total_turns' guards the
+    no-evidence case so an empty project doesn't get arrested on a 0 score.
+    Each band is one point of the /10 scale.
     """
     if total_turns == 0:
         return "🕵️", "Case pending — not enough evidence yet."
     if score <= 0:
         return "🚔", "UNDER ARREST — you planned exactly nothing."
-    if score < 20:
+    if score < 2:
         return "🚓", "WANTED for reckless coding. The Patrol is closing in."
-    if score < 40:
+    if score < 4:
         return "⚠️", "ON PROBATION — caught winging it more than planning."
-    if score < 60:
+    if score < 6:
         return "🧐", "PERSON OF INTEREST — borderline responsible."
-    if score < 80:
+    if score < 8:
         return "🎖️", "MODEL CITIZEN — the Patrol salutes you."
-    if score < 100:
+    if score < 10:
         return "🏅", "DEPUTY OF THE MONTH — basically running the precinct."
     return "🏆", "CAPTAIN OF THE PATROL — a flawless planning record."
 
@@ -398,17 +403,21 @@ def main() -> int:
             ("Plans rejected", f"{plans_rejected}  ({pct(plans_rejected, plans_created)})")
         )
 
-    # Combined planning score: plan-mode usage is the base; refining a plan
-    # (sending it back for changes) is a small diligence bonus (coeff 0.25).
-    plan_mode_pct = (
-        plan_mode_user_turns / total_user_turns * 100 if total_user_turns else 0.0
+    # Curved 0–10 planning score: plan-mode usage is the base, run through a
+    # square-root curve so steady planning is rewarded instead of only a
+    # perfect 100%. Refining a plan (sending it back for changes) adds a small
+    # diligence bonus (up to +1.5), which keeps the top tier reachable with
+    # strong-but-real planning.
+    plan_mode_frac = (
+        plan_mode_user_turns / total_user_turns if total_user_turns else 0.0
     )
-    sent_back_pct = plans_sent_back / plans_created * 100 if plans_created else 0.0
-    score = min(100.0, plan_mode_pct + 0.25 * sent_back_pct)
+    sent_back_frac = plans_sent_back / plans_created if plans_created else 0.0
+    score = min(10.0, (plan_mode_frac ** 0.5) * 10 + 1.5 * sent_back_frac)
     emoji, headline = verdict(score, total_user_turns)
 
     rows.append(DIVIDER)
-    rows.append(f"{emoji} Patrol verdict: {score:.1f}% — {headline}")
+    rows.append(("🎯 Your score", f"{score:.1f} / 10"))
+    rows.append(f"{emoji} Patrol verdict: {headline}")
     print(render_panel("The Planning Patrol", project_dir, rows))
     return 0
 
